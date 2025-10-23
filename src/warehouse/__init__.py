@@ -1,0 +1,2 @@
+"""BigQuery warehouse schema management."""
+
