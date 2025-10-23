@@ -185,16 +185,16 @@ if __name__ == "__main__":
                                      primary_key: str = "id") -> str:
         """Generate extraction code for an endpoint."""
         return f'''    # Extract {table_name}
-    {table_name}_url = f"{{api_url}}{endpoint}"
-    log.info(f"Fetching {table_name} from {{{table_name}_url}}")
+    {table_name}_url = f"{{{{api_url}}}}{endpoint}"
+    log.info(f"Fetching {table_name} from {{{{{table_name}_url}}}}")
     
     {table_name}_records = get_endpoint_data({table_name}_url, headers)
-    log.info(f"Retrieved {{{len({table_name}_records)}}} {table_name} records")
+    log.info(f"Retrieved {{{{len({table_name}_records)}}}} {table_name} records")
     
     for record in {table_name}_records:
         # Ensure primary key exists
         if "{primary_key}" not in record:
-            log.warning(f"Skipping record without {primary_key}: {{record}}")
+            log.warning(f"Skipping record without {primary_key}: {{{{record}}}}")
             continue
         
         op.upsert(
