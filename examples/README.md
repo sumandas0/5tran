@@ -34,13 +34,61 @@ usage events. Calculate monthly recurring revenue (MRR), churn rate, and
 active users by plan.
 ```
 
+### 3. GitHub API (`github_api.json`) 🆕
+Real GitHub API integration example:
+- **Repositories**: Your repos with stats
+- **Issues**: Track issues across repos
+- **Pull Requests**: Monitor PR activity
+- **Commits**: Track commit history
+
+**Use Case**: Developer productivity, code review metrics
+
+**Sample Requirements**:
+```
+I want to sync GitHub data for my repositories including repos, issues, 
+pull requests, and commits. Calculate repository activity, issue resolution 
+time, PR merge time, and contributor metrics.
+```
+
+**Authentication**: GitHub Personal Access Token (Bearer)
+
+**Run Example**:
+```bash
+python examples/github_example.py
+```
+
+This example demonstrates:
+- Custom authentication configuration (Bearer token)
+- Real API with actual GitHub token
+- Complete end-to-end workflow
+
 ## How to Use
 
-1. Open the 5Tran Gradio interface
+### Option 1: Complete Programmatic Example
+
+Run the full end-to-end example:
+```bash
+python examples/complete_example.py
+```
+
+This demonstrates:
+- Listing Fivetran groups
+- Creating pipeline with auto-deployment
+- Checking connector status
+- Example natural language queries
+
+### Option 2: UI Example
+
+See `examples/ui_example.md` for complete step-by-step UI guide with screenshots and troubleshooting.
+
+### Option 3: Quick UI Test
+
+1. Open the 5Tran Gradio interface: `python src/ui/app.py`
 2. Navigate to the "Pipeline Creator" tab
 3. Paste your requirements in the text area
 4. Upload one of these OpenAPI specs
-5. Click "Create Pipeline"
+5. Enable "Auto-deploy to Fivetran"
+6. Enter credentials and click "Create & Deploy Pipeline"
 
 ## Creating Your Own
 

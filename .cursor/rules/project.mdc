@@ -8,12 +8,13 @@ alwaysApply: false
 You are building a development prototype of an AI-powered data pipeline automation system that creates end-to-end data pipelines using Fivetran connectors, dbt transformations, and BigQuery as the destination. The system uses Google's ADK (AI Development Kit) with Gemini API for AI capabilities, enabling users to describe data requirements in natural language and automatically generate the necessary infrastructure.
 
 ## Core Technologies
-- **AI Framework**: Google ADK with Gemini API
+- **AI Framework**: Google Gemini API
 - **Language**: Python 3.11+
 - **UI**: Gradio for rapid prototyping
-- **Data Pipeline**: Fivetran SDK for connectors, dbt-core for transformations
+- **Data Pipeline**: Fivetran Connector SDK (real API, no mocks), dbt-core for transformations
 - **Data Warehouse**: Google BigQuery
 - **API Specification**: OpenAPI/Swagger for source definitions
+- **Deployment**: One-click deployment from UI with auto-generated SDK connectors
 
 ## Project Structure
 ```

@@ -31,9 +31,26 @@ class PipelineOrchestrator:
     def create_pipeline(
         self,
         requirements: str,
-        openapi_spec: Optional[str] = None
+        openapi_spec: Optional[str] = None,
+        auto_deploy: bool = False,
+        fivetran_group_id: Optional[str] = None,
+        source_api_credentials: Optional[Dict[str, str]] = None,
+        auth_config: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
-        """Create a complete data pipeline from requirements."""
+        """
+        Create a complete data pipeline from requirements.
+        
+        Args:
+            requirements: Natural language requirements
+            openapi_spec: Optional OpenAPI specification
+            auto_deploy: If True, automatically deploy connector to Fivetran
+            fivetran_group_id: Fivetran group ID for deployment (required if auto_deploy=True)
+            source_api_credentials: Source API credentials for the connector
+                                   {"api_url": "...", "api_key": "...", "auth_type": "bearer"}
+        
+        Returns:
+            Pipeline information including deployment status
+        """
         
         print("\n🚀 Starting pipeline creation...")
         print("=" * 50)
@@ -73,14 +90,68 @@ class PipelineOrchestrator:
             except Exception as e:
                 print(f"   ⚠️  Warning: Failed to parse OpenAPI spec: {e}")
         
-        # Step 3: Create Fivetran connector configuration
-        print("\n🔧 Step 3: Configuring Fivetran connector...")
-        fivetran_config = self.fivetran.create_connector_config(
+        # Step 3: Generate Fivetran Connector SDK code
+        print("\n🔧 Step 3: Generating Fivetran Connector SDK...")
+        
+        # Prepare endpoint configurations
+        endpoint_configs = []
+        for endpoint_path in endpoints:
+            # Extract table name from endpoint
+            table_name = endpoint_path.strip("/").split("/")[0].lower()
+            if not table_name:
+                table_name = "data"
+            
+            endpoint_configs.append({
+                "table_name": table_name,
+                "path": endpoint_path,
+                "columns": [
+                    {"name": "id", "type": "STRING"},
+                    {"name": "data", "type": "JSON"},
+                    {"name": "created_at", "type": "TIMESTAMP"},
+                    {"name": "updated_at", "type": "TIMESTAMP"}
+                ],
+                "primary_keys": ["id"]
+            })
+        
+        # Use auth_config if provided, otherwise fall back to schema_info
+        final_auth_config = auth_config or {
+            "method": schema_info.get('auth_type', 'bearer'),
+            "header_name": "Authorization",
+            "header_prefix": "Bearer"
+        }
+        
+        # Generate connector code
+        connector_info = self.fivetran.generate_connector_code(
             source_name=analysis.get('source_name', 'unknown_source'),
-            source_type=analysis.get('source_type', 'rest_api'),
-            endpoints=endpoints,
-            schema_info=schema_info
+            api_url=schema_info.get('base_url', 'https://api.example.com'),
+            endpoints=endpoint_configs,
+            auth_config=final_auth_config
         )
+        
+        print(f"✓ Connector files generated in: {connector_info['connector_dir']}")
+        
+        # Auto-deploy if requested
+        deployment_result = None
+        if auto_deploy:
+            if not fivetran_group_id:
+                print("⚠️  Warning: auto_deploy=True but no fivetran_group_id provided. Skipping deployment.")
+            elif not source_api_credentials:
+                print("⚠️  Warning: auto_deploy=True but no source_api_credentials provided. Skipping deployment.")
+            else:
+                print("\n🚀 Step 3b: Auto-deploying connector to Fivetran...")
+                try:
+                    deployment_result = self.deploy_connector(
+                        connector_dir=connector_info['connector_dir'],
+                        group_id=fivetran_group_id,
+                        api_credentials=source_api_credentials
+                    )
+                    print("✅ Connector deployed and syncing!")
+                except Exception as e:
+                    print(f"❌ Deployment failed: {e}")
+                    print("   You can deploy manually later using the CLI scripts")
+                    deployment_result = {"status": "failed", "error": str(e)}
+        else:
+            print("   Note: Use auto_deploy=True with credentials to deploy automatically")
         
         # Step 4: Create BigQuery schema
         print("\n💾 Step 4: Setting up BigQuery schema...")
@@ -164,8 +235,12 @@ class PipelineOrchestrator:
         pipeline_info = {
             "analysis": analysis,
             "fivetran": {
-                "config": fivetran_config,
-                "config_file": str(self.fivetran.configs_dir / f"{fivetran_config['connector_name']}.json")
+                "connector_name": connector_info['connector_name'],
+                "connector_dir": connector_info['connector_dir'],
+                "files": connector_info['files'],
+                "deployed": deployment_result is not None and deployment_result.get('status') == 'deployed',
+                "deployment": deployment_result,
+                "connector_id": deployment_result.get('connector_id') if deployment_result else None
             },
             "bigquery": {
                 "dataset": self.bigquery.dataset_id,
@@ -176,7 +251,7 @@ class PipelineOrchestrator:
                 "staging_models": staging_models,
                 "mart_models": mart_models
             },
-            "files_created": staging_models + mart_models + [fivetran_config['connector_name']]
+            "files_created": staging_models + mart_models + [connector_info['connector_name']]
         }
         
         self.current_pipeline = pipeline_info
@@ -228,6 +303,60 @@ class PipelineOrchestrator:
             "bigquery_tables": bigquery_tables,
             "pipeline_info": self.current_pipeline
         }
+    
+    def deploy_connector(
+        self,
+        connector_dir: str,
+        group_id: str,
+        api_credentials: Optional[Dict[str, str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Deploy a generated connector to Fivetran.
+        
+        Args:
+            connector_dir: Path to connector directory
+            group_id: Fivetran group ID for the destination
+            api_credentials: Optional dict with 'api_key' for the source API
+            
+        Returns:
+            Deployment result
+        """
+        print(f"\n🚀 Deploying connector: {connector_dir}")
+        print("=" * 50)
+        
+        # If API credentials provided, create configuration.json
+        if api_credentials:
+            import json
+            from pathlib import Path
+            config_file = Path(connector_dir) / "configuration.json"
+            with open(config_file, 'w') as f:
+                json.dump(api_credentials, f, indent=2)
+            print(f"✓ Created configuration.json")
+        
+        # Deploy using Fivetran SDK
+        result = self.fivetran.deploy_connector(
+            connector_dir=Path(connector_dir),
+            group_id=group_id
+        )
+        
+        if result['status'] == 'deployed':
+            connector_id = result.get('connector_id')
+            print(f"\n✅ Connector deployed successfully!")
+            if connector_id:
+                print(f"   Connector ID: {connector_id}")
+            print(f"   Group ID: {group_id}")
+            
+            # Optionally trigger initial sync
+            if connector_id:
+                print(f"\n🔄 Triggering initial sync...")
+                try:
+                    sync_result = self.fivetran.trigger_sync(connector_id)
+                    print(f"✓ Initial sync started")
+                except Exception as e:
+                    print(f"⚠️  Note: Could not trigger sync automatically: {e}")
+                    print(f"   You can trigger it manually from the Fivetran dashboard")
+        
+        return result
     
     def _fallback_analysis(self, requirements: str, openapi_spec: Optional[str]) -> Dict[str, Any]:
         """Fallback analysis when Gemini is not available."""

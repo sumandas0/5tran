@@ -1,2 +1,0 @@
-"""5tran CLI package."""
-

@@ -31,7 +31,6 @@ GEMINI_TEMPERATURE = 0.2
 
 # Development mode
 DEV_MODE = os.getenv("DEV_MODE", "true").lower() == "true"
-MOCK_FIVETRAN = os.getenv("MOCK_FIVETRAN", "true").lower() == "true"
 
 def validate_config():
     """Validate essential configuration."""
@@ -40,12 +39,20 @@ def validate_config():
     if not GEMINI_API_KEY:
         missing.append("GEMINI_API_KEY")
     
+    if not FIVETRAN_API_KEY:
+        missing.append("FIVETRAN_API_KEY")
+    
+    if not FIVETRAN_API_SECRET:
+        missing.append("FIVETRAN_API_SECRET")
+    
     if not DEV_MODE and not GCP_PROJECT_ID:
         missing.append("GCP_PROJECT_ID")
     
     if missing:
         print(f"⚠️  Warning: Missing configuration: {', '.join(missing)}")
-        print("Create a .env file based on .env.example")
+        print("Create a .env file with required API keys:")
+        for key in missing:
+            print(f"  - {key}")
         return False
     
     return True
