@@ -1,380 +1,229 @@
-# 🚀 5Tran AI Pipeline Automation
+# 5tran Connector Generator
 
-AI-powered data pipeline automation that creates end-to-end data pipelines using Fivetran connectors, dbt transformations, and BigQuery - all from natural language descriptions.
+This project uses a multi-agent system built with Google's Agent Development Kit (ADK) to automate the creation of Fivetran connectors.
 
-## 🎯 What is 5Tran?
+## How it works
 
-5Tran is a development prototype that uses Google's Gemini AI to automatically generate complete data pipelines. Simply describe your data requirements in natural language, optionally provide an OpenAPI specification, and 5Tran will:
+1.  **Input**: You provide a project name, website URL, and a prompt describing the data you want to extract.
+2.  **Data Extraction**: The Schema Generator agent uses Firecrawl's `extract` endpoint to extract sample data from the website based on your prompt.
+3.  **Dual Schema Generation**: The agent analyzes the extracted data and creates TWO schemas:
+    - **Firecrawl Schema**: A JSON schema for data extraction via the Firecrawl API
+    - **Fivetran SDK Schema**: A table definition for the Fivetran connector's `schema()` function
+4.  **Template-Based Generation**: A parameterized connector template is populated with your URL, prompt, and both schemas to create the final connector code.
+5.  **Project Creation**: A complete project folder is created with connector.py, configuration.json, and README.md.
+6.  **Output**: A production-ready Fivetran connector ready for testing and deployment.
 
-1. **Analyze** your requirements using Gemini AI
-2. **Configure** Fivetran connectors for data ingestion
-3. **Generate** dbt models for transformations
-4. **Create** BigQuery schemas and tables
-5. **Enable** natural language SQL queries against your data
-
-## ✨ Features
-
-- 🤖 **AI-Powered**: Uses Google Gemini for intelligent pipeline design
-- 📊 **End-to-End**: From source API to warehouse to insights
-- 🔧 **Automated**: Generates all configuration and transformation code
-- 💬 **Natural Language**: Chat with your data using plain English
-- 🎨 **Beautiful UI**: Modern Gradio interface for easy interaction
-- 📝 **OpenAPI Support**: Automatically parse API specifications
-
-## 🏗️ Architecture
+## Project Structure
 
 ```
-User Requirements (Natural Language)
-           ↓
-    [Gemini AI Analysis]
-           ↓
-    ┌──────┴──────┐
-    ↓             ↓
-[Fivetran]    [BigQuery]
-Connectors     Schemas
-    ↓             ↓
-    └──────┬──────┘
-           ↓
-    [dbt Models]
-  Staging + Marts
-           ↓
-    [SQL Chat Bot]
-  Query with NL
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.11+
-- **Google Gemini API key** (required)
-- **Fivetran API credentials** (required) - Get from [Fivetran Dashboard](https://fivetran.com/dashboard/settings/account)
-- Google Cloud Project with BigQuery (for warehouse)
-- Fivetran account with destination configured
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone <repository-url>
-cd 5tran
-```
-
-2. **Install dependencies**
-```bash
-# Using pip
-pip install -e .
-
-# Or using uv (recommended)
-uv pip install -e .
-```
-
-3. **Set up environment variables**
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and add your API keys:
-```env
-# Required
-GEMINI_API_KEY=your_gemini_api_key_here
-FIVETRAN_API_KEY=your_fivetran_api_key
-FIVETRAN_API_SECRET=your_fivetran_api_secret
-
-# For BigQuery warehouse
-GCP_PROJECT_ID=your_gcp_project_id
-BIGQUERY_DATASET=dev_pipeline_test
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-```
-
-4. **Run the application**
-```bash
-python src/ui/app.py
-```
-
-The Gradio UI will open at `http://localhost:7860`
-
-## 📖 Usage
-
-### Creating & Deploying a Pipeline (All from UI!)
-
-1. Navigate to the **Pipeline Creator** tab
-2. Describe your requirements in natural language:
-   ```
-   I want to sync data from our e-commerce API including orders, 
-   customers, and products. Calculate monthly revenue and customer 
-   lifetime value.
-   ```
-3. (Optional) Upload an OpenAPI specification
-4. **Enable Auto-Deploy** (optional but recommended):
-   - Check "Auto-deploy to Fivetran"
-   - Enter your Fivetran Group ID (get from CLI: `python scripts/list_fivetran_groups.py`)
-   - Enter source API credentials (URL + API Key)
-5. Click **Create & Deploy Pipeline**
-6. 5Tran will generate AND deploy:
-   - ✅ Fivetran connector (auto-deployed!)
-   - ✅ BigQuery tables
-   - ✅ dbt staging models
-   - ✅ dbt mart models
-   - ✅ Start syncing immediately!
-
-### Querying Your Data
-
-1. Navigate to the **SQL Chat** tab
-2. Ask questions in natural language:
-   ```
-   What are the top 10 customers by total revenue?
-   ```
-3. Click **Generate & Execute**
-4. View the generated SQL and results
-
-### Monitoring Your Pipeline
-
-1. Navigate to the **Pipeline Status** tab
-2. Click **Refresh Status** to see:
-   - Configured connectors
-   - Generated dbt models
-   - Created BigQuery tables
-
-## 📁 Project Structure
-
-```
-5tran/
-├── src/
-│   ├── agent/              # Gemini AI integration
-│   │   └── gemini_agent.py
-│   ├── connectors/         # Fivetran & OpenAPI
-│   │   ├── fivetran_manager.py
-│   │   └── openapi_parser.py
-│   ├── transformations/    # dbt generation
-│   │   └── dbt_generator.py
-│   ├── warehouse/          # BigQuery management
-│   │   └── bigquery_manager.py
-│   ├── ui/                 # Gradio interface
-│   │   └── app.py
-│   ├── config.py           # Configuration
-│   └── orchestrator.py     # Main orchestration
-├── examples/               # Sample OpenAPI specs
-│   ├── ecommerce_api.json
-│   └── saas_metrics_api.yaml
-├── configs/                # Generated configs
-│   └── fivetran/
-├── dbt_project/            # Generated dbt models
-│   ├── models/
-│   │   ├── staging/
-│   │   └── marts/
-│   └── dbt_project.yml
-├── .env.example            # Environment template
-├── pyproject.toml          # Dependencies
+.
+├── main.py                 # Main entry point
+├── src
+│   ├── agents
+│   │   ├── agents.py              # Schema Generator agent definition
+│   │   ├── config.py              # Agent configuration (model name)
+│   │   ├── connector_template.py  # Parameterized connector template
+│   │   └── tools
+│   │       └── firecrawl_tool.py  # Firecrawl extract tool
+│   └── connectors          # Generated connector projects
+│       └── <project_name>
+│           ├── connector.py         # Generated Fivetran connector
+│           ├── configuration.json   # API keys and URL (git-ignored)
+│           ├── requirements.txt     # Python dependencies
+│           └── README.md           # Project documentation
+├── pyproject.toml
+├── .env                    # Environment variables (FIRECRAWL_API_KEY)
 └── README.md
 ```
 
-## 🎓 Examples
+## Setup
 
-### Complete End-to-End Example
+1.  **Install dependencies**:
+    ```bash
+    uv pip install .
+    ```
 
-Run the full programmatic example:
+2.  **Set up your environment variables**:
+    Create a `.env` file in the root of the project and add your Firecrawl API key:
+    ```
+    FIRECRAWL_API_KEY="fc-YOUR-API-KEY"
+    ```
+    The application will load this key.
+
+## Usage
+
+Run the connector generator with a project name, URL, and prompt:
 ```bash
-python examples/complete_example.py
+python main.py <project_name> <url> <prompt>
 ```
 
-This demonstrates the entire workflow:
-- ✅ List Fivetran groups
-- ✅ Generate connector SDK code
-- ✅ Auto-deploy to Fivetran
-- ✅ Create BigQuery tables
-- ✅ Generate dbt models
-- ✅ Check sync status
-- ✅ Natural language queries
+### Examples
 
-### UI Step-by-Step Guide
-
-See **`examples/ui_example.md`** for:
-- Complete UI walkthrough with step-by-step instructions
-- Expected outputs at each stage
-- Troubleshooting common issues
-- Example queries and results
-
-### Quick Examples
-
-**Example 1: E-Commerce Pipeline**
-```
-Requirements: Track orders, customers, products. Calculate revenue metrics.
-OpenAPI: examples/ecommerce_api.json
-Generated: 3 staging + 1 mart model, auto-deployed
-```
-
-**Example 2: SaaS Metrics**
-```
-Requirements: Track users, subscriptions, usage. Calculate MRR and churn.
-OpenAPI: examples/saas_metrics_api.yaml
-Generated: 3 staging + 1 mart model, auto-deployed
-```
-
-## 🔌 Fivetran Connector SDK Integration
-
-5Tran uses the **real Fivetran Connector SDK** with **one-click deployment from UI**:
-
-- ✅ **Real API Integration**: No mocks - uses actual Fivetran REST API
-- ✅ **Auto-Generated Connectors**: Creates production-ready `connector.py` files
-- ✅ **One-Click Deploy**: Deploy directly from UI - no CLI needed!
-- ✅ **No Manual IAC**: Automatic deployment without infrastructure setup
-
-### Two Ways to Deploy
-
-**Option 1: From UI (Recommended)**
-1. Fill in requirements
-2. Check "Auto-deploy to Fivetran"
-3. Enter Group ID + API credentials
-4. Click "Create & Deploy Pipeline"
-5. ✅ Done! Connector is live and syncing
-
-**Option 2: Via CLI**
+**Example 1: Google News Connector**
 ```bash
-python scripts/deploy_connector.py \
-  --connector-dir configs/fivetran/connectors/your_connector \
-  --group-id YOUR_GROUP_ID \
-  --api-url https://api.example.com \
-  --api-key YOUR_SOURCE_API_KEY
+python main.py "google_news" "https://news.google.com" "Extract top news articles with title, URL, and summary"
 ```
 
-## 🔧 Configuration
+**Example 2: Shopify Products with Wildcard**
+```bash
+python main.py "shopify_products" "https://shop.example.com/products/*" "Extract all product information including name, price, and description"
+```
 
-### Gemini Settings
+**Example 3: With Custom API Key**
+```bash
+python main.py "my_connector" "https://example.com" "Extract data" --api-key "fc-YOUR-API-KEY"
+```
 
-Adjust AI behavior in `src/config.py`:
+### What Gets Generated
+
+For a project named `google_news`, the following structure is created:
+
+```
+src/connectors/google_news/
+├── connector.py           # The Fivetran connector code
+├── configuration.json     # Configuration with API keys and URL
+├── requirements.txt       # Python dependencies
+└── README.md             # Project-specific documentation
+```
+
+**Files:**
+- **`connector.py`**: Complete Fivetran connector with schema(), update(), error handling, and debug mode
+- **`configuration.json`**: Contains `firecrawl_api_key` and `url` for the connector
+- **`requirements.txt`**: Python dependencies (firecrawl-py==1.5.0, fivetran-connector-sdk, python-dotenv)
+- **`README.md`**: Instructions for testing and deploying the specific connector
+
+**Note:** `configuration.json` files are automatically excluded from git to protect your API keys.
+
+**Example `configuration.json`:**
+```json
+{
+  "firecrawl_api_key": "fc-YOUR-API-KEY",
+  "url": "https://news.google.com"
+}
+```
+
+### Testing and Deployment
+
+**Install Dependencies:**
+```bash
+cd src/connectors/google_news
+pip install -r requirements.txt
+```
+
+**Test Locally:**
+```bash
+python connector.py
+```
+
+**Deploy to Fivetran:**
+```bash
+fivetran deploy .
+```
+
+### Extract Endpoint Features
+
+The Firecrawl `extract` endpoint provides powerful capabilities:
+- **Single Page Extraction**: Extract structured data from a single URL
+- **Multiple Pages**: Provide multiple URLs separated by commas
+- **Wildcard Support**: Use `/*` to automatically crawl and extract from all discoverable URLs in a domain
+- **Schema-based Extraction**: Define a JSON schema for structured data extraction
+- **Prompt-based Extraction**: Use natural language prompts to describe the data you want
+
+Example with multiple URLs:
 ```python
-GEMINI_MODEL_FAST = "gemini-1.5-flash"  # Fast responses
-GEMINI_MODEL_PRO = "gemini-1.5-pro"     # Better reasoning
-GEMINI_TEMPERATURE = 0.2                 # Lower = more consistent
+urls = ["https://example.com/page1", "https://example.com/page2"]
 ```
 
-### BigQuery Settings
-
-Configure warehouse in `.env`:
-```env
-GCP_PROJECT_ID=your_project
-BIGQUERY_DATASET=dev_pipeline_test
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json
+Example with wildcard for full domain:
+```python
+urls = ["https://example.com/*"]
 ```
 
-### dbt Settings
+## Dual Schema Architecture
 
-Generated dbt projects use:
-- **Staging models**: Views in `staging` schema
-- **Mart models**: Tables in `marts` schema
-- **Authentication**: OAuth (default) or service account
+The system generates two complementary schemas:
 
-## 📚 How It Works
+### 1. Firecrawl Schema (JSON Schema)
+Used by the Firecrawl `extract` API to extract structured data from web pages.
 
-### 1. Requirement Analysis
-Gemini analyzes your natural language requirements to extract:
-- Source type (REST API, database, SaaS)
-- Entities (tables/resources)
-- Business metrics
-- Transformation needs
+Example:
+```json
+{
+  "type": "object",
+  "properties": {
+    "title": {"type": "string", "description": "Article title"},
+    "author": {"type": "string", "description": "Article author"},
+    "published_date": {"type": "string", "description": "Publication date"}
+  },
+  "required": ["title", "published_date"]
+}
+```
 
-### 2. OpenAPI Parsing
-If provided, the OpenAPI parser extracts:
-- API endpoints
-- Response schemas
-- Authentication methods
-- Data types
+### 2. Fivetran SDK Schema
+Defines the database table structure for the Fivetran connector.
 
-### 3. Connector Configuration
-Fivetran configurations are generated with:
-- Endpoint mappings
-- Authentication setup
-- Pagination strategies
-- Primary keys
+Example:
+```json
+[
+  {
+    "table": "articles",
+    "primary_key": ["url"],
+    "columns": {
+      "url": "STRING",
+      "title": "STRING",
+      "author": "STRING",
+      "published_date": "STRING"
+    }
+  }
+]
+```
 
-### 4. Schema Generation
-BigQuery tables are created with:
-- Inferred column types
-- Metadata columns (_loaded_at, _source)
-- Proper naming conventions
+This dual schema approach eliminates the need for manual conversion between formats and ensures consistency between data extraction and storage.
 
-### 5. dbt Model Generation
-Transformation models are generated:
-- **Staging**: One per source table, basic cleaning
-- **Marts**: Business metrics and aggregations
-- **Schema**: Full documentation
+## Template-Based Architecture
 
-### 6. SQL Generation
-Natural language queries are converted to SQL:
-- Context-aware (knows your schema)
-- BigQuery-optimized syntax
-- Executable and debuggable
+The system uses a simple, efficient template-based approach:
 
-## 🐛 Troubleshooting
+### Generation Flow
 
-### "Gemini API key not found"
-- Check that `GEMINI_API_KEY` is set in `.env`
-- Get a key at https://ai.google.dev/
+```
+┌─────────────────────────────────────────────────┐
+│ 1. User Input                                   │
+│    - Project name                               │
+│    - URL to extract from                        │
+│    - Extraction prompt                          │
+└────────────────┬────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────┐
+│ 2. Schema Generator Agent                       │
+│    - Uses Firecrawl extract to get sample data │
+│    - Analyzes data structure                    │
+│    - Generates Firecrawl JSON schema            │
+│    - Generates Fivetran SDK schema              │
+└────────────────┬────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────┐
+│ 3. Template Population                          │
+│    - Loads connector_template.py                │
+│    - Replaces {url_to_extract}                  │
+│    - Replaces {extraction_prompt}               │
+│    - Replaces {firecrawl_schema}                │
+│    - Replaces {fivetran_schema}                 │
+└────────────────┬────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────┐
+│ 4. Project Creation                             │
+│    - Creates project folder                     │
+│    - Saves connector.py                         │
+│    - Generates configuration.json               │
+│    - Creates README.md                          │
+└─────────────────────────────────────────────────┘
+```
 
-### "BigQuery client initialization failed"
-- This is expected without GCP credentials
-- App runs in mock mode automatically
-- To use real BigQuery, set up service account key
+### Key Benefits
 
-### "Failed to parse OpenAPI spec"
-- Ensure spec is valid JSON or YAML
-- Use OpenAPI 3.0 format
-- Check for syntax errors
-
-### Models not compiling
-- Check dbt_project.yml configuration
-- Verify BigQuery credentials
-- Run `dbt compile` in dbt_project/ for details
-
-## 🎯 Recent Updates
-
-- ✅ **One-Click Deployment from UI** - Deploy connectors without leaving the UI!
-- ✅ **Real Fivetran SDK Integration** - Production-ready, no mocks
-- ✅ **Auto-Generated Connector Code** - SDK-compliant `connector.py` files
-- ✅ **REST API Integration** - Real-time connector status and management
-- ✅ **No CLI Required** - Everything can be done from the web interface
-
-## 🎯 Roadmap
-
-- [ ] Support for more source types (databases, webhooks)
-- [ ] OAuth2 authentication flow
-- [ ] Data quality tests
-- [ ] Multi-environment support (dev/staging/prod)
-- [ ] Advanced transformations (ML features)
-
-## 🤝 Contributing
-
-This is a development prototype. Contributions welcome!
-
-Areas for improvement:
-- Additional source connectors
-- More sophisticated dbt models
-- Better error handling
-- Production deployment guide
-- Test coverage
-
-## 📄 License
-
-MIT License - see LICENSE file for details
-
-## 🙏 Acknowledgments
-
-Built with:
-- [Google Gemini](https://ai.google.dev/) - AI capabilities
-- [Fivetran](https://fivetran.com/) - Data connectors
-- [dbt](https://www.getdbt.com/) - Transformations
-- [BigQuery](https://cloud.google.com/bigquery) - Data warehouse
-- [Gradio](https://gradio.app/) - UI framework
-
-## 📞 Support
-
-For issues and questions:
-- Check the [examples/](examples/) directory
-- Review [configs/](configs/) for generated files
-- Check dbt compilation errors in `dbt_project/target/`
-
----
-
-**5Tran** - Making data pipelines as easy as having a conversation 🚀
-
+- **Fast**: No iterative LLM refinement loops
+- **Reliable**: Template ensures consistent, working code every time
+- **Predictable**: Same structure for all connectors
+- **Maintainable**: Single template file to update for improvements
+- **Cost-effective**: Only one LLM call for schema generation

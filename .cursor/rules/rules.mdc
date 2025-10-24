@@ -3,3 +3,5 @@ alwaysApply: true
 ---
 1. For god's sake do not keep adding .md file like a drunk person, just keep updating readme 
 2. Keep updating rules if needed
+3. Do not add comments if not absolutely necessary
+4. Use uv for package management we use that in the project

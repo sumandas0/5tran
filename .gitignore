@@ -47,6 +47,10 @@ dbt_project/models/**/*.sql
 dbt_project/models/**/*.yml
 !dbt_project/.gitkeep
 
+# Connectors
+src/connectors/*/configuration.json
+src/connectors/*/connector.py
+
 # Google Cloud
 *.json
 !examples/*.json
@@ -54,3 +58,4 @@ service-account-key.json
 
 # Gradio
 gradio_cached_examples/
+generated/
