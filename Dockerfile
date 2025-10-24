@@ -30,5 +30,5 @@ USER appuser
 EXPOSE 8080
 
 # Run the Gradio app with uv
-CMD ["python", "app.py"]
+CMD ["uv", "run", "app.py"]
 

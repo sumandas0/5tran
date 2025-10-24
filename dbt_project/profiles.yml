@@ -1,0 +1,13 @@
+
+fivetran_pipeline:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: your-gcp-project-id
+      dataset: dev_pipeline_test
+      threads: 4
+      timeout_seconds: 300
+      location: US
+      priority: interactive
