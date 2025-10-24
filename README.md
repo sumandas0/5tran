@@ -56,13 +56,16 @@ This project uses a multi-agent system built with Google's Agent Development Kit
     Or follow the [official Fivetran CLI installation guide](https://github.com/fivetran/fivetran-cli).
 
 3.  **Set up your environment variables**:
-    Create a `.env` file in the root of the project and add your Firecrawl API key:
+    Create a `.env` file in the root of the project and add your API keys:
     ```
+    ACCESS_PASSWORD="your-secure-password"
     FIRECRAWL_API_KEY="fc-YOUR-API-KEY"
     FIVETRAN_API_SECRET_BASE64="your-base64-key"
     GEMINI_API_KEY="your-gemini-key"
     ```
     The application will load these keys.
+    
+    **Note**: `ACCESS_PASSWORD` is required to prevent API misuse. Users must enter this password in the Gradio UI to generate connectors.
 
 ### Cloud Deployment (Google Cloud Run)
 
@@ -71,6 +74,7 @@ The application is containerized and ready for deployment to Google Cloud Run. S
 **Quick Deploy:**
 ```bash
 export PROJECT_ID="your-gcp-project-id"
+export ACCESS_PASSWORD="your-secure-password"
 export FIVETRAN_API_SECRET_BASE64="your_base64_key"
 export FIRECRAWL_API_KEY="your_firecrawl_key"
 export GEMINI_API_KEY="your_gemini_key"
@@ -79,6 +83,7 @@ export GEMINI_API_KEY="your_gemini_key"
 ```
 
 **Required Environment Variables:**
+- `ACCESS_PASSWORD` - Password required to use the application (prevents API misuse)
 - `FIVETRAN_API_SECRET_BASE64` - Base64-encoded Fivetran API credentials
 - `FIRECRAWL_API_KEY` - Firecrawl API key for web scraping
 - `GEMINI_API_KEY` - Google Gemini API key for AI generation
@@ -103,22 +108,24 @@ The interface will be available at `http://localhost:7860` and provides:
 - **Secure Input**: Password-masked fields for API credentials
 
 **Required Inputs:**
-1. Destination Name - Your Fivetran destination identifier
-2. Project Name - Name for your connector (auto-sanitized)
-3. Target URL - Website to extract data from
-4. Extraction Prompt - Description of data to extract
-5. Fivetran API Key - Your Fivetran API credentials
-6. Fivetran API Secret - Your Fivetran API secret
-7. Firecrawl API Key - API key for web scraping
+1. **Access Password** - Password to use the service (prevents API misuse)
+2. **Destination Name** - Your Fivetran destination identifier
+3. **Project Name** - Name for your connector (auto-sanitized)
+4. **Target URL** - Website to extract data from
+5. **Extraction Prompt** - Description of data to extract
+6. **Fivetran API Key** - Optional if set in env var
+7. **Firecrawl API Key** - Optional if set in env var
 
 **Features:**
+- 🔐 Password authentication to prevent API misuse
+- 🔑 Optional API keys - use UI input or environment variables
+- 📦 Download generated connectors as ZIP files
 - 🔄 Real-time progress tracking with status updates
 - 🗑️ Automatic deletion of old connectors before generation
 - 🚀 Automatic deployment to Fivetran with CLI integration
 - 🔒 Secure password-masked input fields for API keys
 - 📊 Live generation logs with emoji indicators
 - ✅ Success confirmation with deployment status
-- 📁 Direct path to generated connector folder
 - 🎨 Modern, responsive UI with professional styling
 - ⚠️ Fallback instructions if deployment fails
 

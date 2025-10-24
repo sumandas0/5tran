@@ -10,6 +10,11 @@ if [ -z "$PROJECT_ID" ]; then
     exit 1
 fi
 
+if [ -z "$ACCESS_PASSWORD" ]; then
+    echo "❌ Error: ACCESS_PASSWORD environment variable is not set"
+    exit 1
+fi
+
 if [ -z "$FIVETRAN_API_SECRET_BASE64" ]; then
     echo "❌ Error: FIVETRAN_API_SECRET_BASE64 environment variable is not set"
     exit 1
@@ -44,7 +49,7 @@ gcloud run deploy $SERVICE_NAME \
     --cpu 2 \
     --timeout 3600 \
     --max-instances 10 \
-    --set-env-vars "FIVETRAN_API_SECRET_BASE64=$FIVETRAN_API_SECRET_BASE64,FIRECRAWL_API_KEY=$FIRECRAWL_API_KEY,GEMINI_API_KEY=$GEMINI_API_KEY" \
+    --set-env-vars "ACCESS_PASSWORD=$ACCESS_PASSWORD,FIVETRAN_API_SECRET_BASE64=$FIVETRAN_API_SECRET_BASE64,FIRECRAWL_API_KEY=$FIRECRAWL_API_KEY,GEMINI_API_KEY=$GEMINI_API_KEY" \
     --project $PROJECT_ID
 
 echo "✅ Deployment complete!"

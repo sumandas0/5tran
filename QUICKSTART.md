@@ -11,6 +11,7 @@ docker build -t 5tran:local .
 ```bash
 docker run -p 8080:8080 \
   -e PORT=8080 \
+  -e ACCESS_PASSWORD="your_password" \
   -e FIVETRAN_API_SECRET_BASE64="your_key_here" \
   -e FIRECRAWL_API_KEY="your_key_here" \
   -e GEMINI_API_KEY="your_key_here" \
@@ -25,6 +26,7 @@ Open your browser to: http://localhost:8080
 ### Option 1: Quick Deploy Script
 ```bash
 export PROJECT_ID="your-gcp-project-id"
+export ACCESS_PASSWORD="your_password"
 export FIVETRAN_API_SECRET_BASE64="your_key"
 export FIRECRAWL_API_KEY="your_key"
 export GEMINI_API_KEY="your_key"
@@ -52,7 +54,7 @@ gcloud run deploy 5tran \
   --memory 2Gi \
   --cpu 2 \
   --timeout 3600 \
-  --set-env-vars "FIVETRAN_API_SECRET_BASE64=xxx,FIRECRAWL_API_KEY=xxx,GEMINI_API_KEY=xxx"
+  --set-env-vars "ACCESS_PASSWORD=xxx,FIVETRAN_API_SECRET_BASE64=xxx,FIRECRAWL_API_KEY=xxx,GEMINI_API_KEY=xxx"
 ```
 
 ### Option 3: Cloud Build (CI/CD)
@@ -64,6 +66,7 @@ gcloud builds submit --config cloudbuild.yaml
 
 | Variable | Required | Description |
 |----------|----------|-------------|
+| `ACCESS_PASSWORD` | Yes | Password to access the application (prevents API misuse) |
 | `FIVETRAN_API_SECRET_BASE64` | Yes | Base64-encoded Fivetran API key:secret |
 | `FIRECRAWL_API_KEY` | Yes | Firecrawl API key for web scraping |
 | `GEMINI_API_KEY` | Yes | Google Gemini API key |

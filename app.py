@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 import base64
+import zipfile
 from pathlib import Path
 import gradio as gr
 from dotenv import load_dotenv
@@ -149,7 +150,20 @@ def delete_all_connectors():
                 yield f"🗑️ Deleted: {item.name}"
 
 
+def create_zip_from_directory(source_dir: str, output_filename: str) -> str:
+    """Create a zip file from a directory."""
+    zip_path = f"{output_filename}.zip"
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        source_path = Path(source_dir)
+        for file_path in source_path.rglob('*'):
+            if file_path.is_file():
+                arcname = file_path.relative_to(source_path.parent)
+                zipf.write(file_path, arcname)
+    return zip_path
+
+
 async def generate_connector(
+    access_password: str,
     destination_name: str,
     project_name: str,
     url: str,
@@ -160,9 +174,32 @@ async def generate_connector(
 ):
     """Main function to generate connector with progress tracking."""
     try:
-        if not all([destination_name, project_name, url, prompt, fivetran_api_key_base64, firecrawl_api_key]):
-            yield "❌ Error: All fields are required!", None
+        if not all([access_password, destination_name, project_name, url, prompt]):
+            yield "❌ Error: Access password, destination name, project name, URL, and prompt are required!", None
             return
+        
+        correct_password = os.getenv("ACCESS_PASSWORD")
+        if not correct_password:
+            yield "❌ Error: ACCESS_PASSWORD environment variable is not set on the server. Please contact the administrator.", None
+            return
+        
+        if access_password != correct_password:
+            yield "❌ Error: Invalid access password. Please enter the correct password to continue.", None
+            return
+        
+        if not fivetran_api_key_base64:
+            fivetran_api_key_base64 = os.getenv("FIVETRAN_API_SECRET_BASE64")
+            if not fivetran_api_key_base64:
+                yield "❌ Error: Fivetran API Key is required. Either provide it in the form or set FIVETRAN_API_SECRET_BASE64 environment variable.", None
+                return
+            yield f"ℹ️ Using Fivetran API key from environment variable\n\n", None
+        
+        if not firecrawl_api_key:
+            firecrawl_api_key = os.getenv("FIRECRAWL_API_KEY")
+            if not firecrawl_api_key:
+                yield "❌ Error: Firecrawl API Key is required. Either provide it in the form or set FIRECRAWL_API_KEY environment variable.", None
+                return
+            yield f"ℹ️ Using Firecrawl API key from environment variable\n\n", None
         
         progress(0, desc="🧹 Cleaning up old connectors...")
         yield "🧹 **Cleaning up old connectors...**\n", None
@@ -332,6 +369,8 @@ python {project_dir}/connector.py
 
 **Your connector is now live and syncing data! 🎉**
 """
+            zip_file = create_zip_from_directory(project_dir, project_dir)
+            yield result, zip_file
         else:
             gr.Warning(
                 f"⚠️ Deployment Failed\n\n"
@@ -390,8 +429,8 @@ fivetran deploy {project_dir} --api-key {fivetran_api_key_base64} --destination 
 
 **Please resolve the deployment issue and try again.**
 """
-        
-        yield result, project_dir
+            zip_file = create_zip_from_directory(project_dir, project_dir)
+            yield result, zip_file
         
     except Exception as e:
         error_message = f"""
@@ -503,20 +542,27 @@ def create_interface():
                     info="Describe what data you want to scrape from the website"
                 )
                 
-                gr.Markdown("## 🔑 API Credentials")
+                gr.Markdown("## 🔑 Authentication & API Credentials")
+                
+                access_password = gr.Textbox(
+                    label="Access Password",
+                    type="password",
+                    placeholder="Enter the access password",
+                    info="Required to prevent API misuse - provided by administrator"
+                )
                 
                 fivetran_api_key_base64 = gr.Textbox(
                     label="Fivetran API Key (Base64 Encoded)",
                     type="password",
-                    placeholder="Enter your Base64-encoded Fivetran API key",
-                    info="Fivetran provides this as a base64-encoded key:secret string"
+                    placeholder="Enter your Base64-encoded Fivetran API key (optional)",
+                    info="Optional - Will use FIVETRAN_API_SECRET_BASE64 env var if not provided"
                 )
                 
                 firecrawl_api_key = gr.Textbox(
                     label="Firecrawl API Key",
                     type="password",
-                    placeholder="Enter your Firecrawl API Key",
-                    info="Used for website scraping"
+                    placeholder="Enter your Firecrawl API Key (optional)",
+                    info="Optional - Will use FIRECRAWL_API_KEY env var if not provided"
                 )
                 
                 generate_btn = gr.Button(
@@ -533,10 +579,10 @@ def create_interface():
                     elem_classes=["output-markdown"]
                 )
                 
-                output_path = gr.Textbox(
-                    label="Generated Connector Path",
-                    interactive=False,
-                    visible=False
+                download_btn = gr.File(
+                    label="📦 Download Connector (ZIP)",
+                    visible=False,
+                    interactive=False
                 )
         
         gr.Markdown(
@@ -544,12 +590,13 @@ def create_interface():
             ---
             
             ### 💡 Tips
-            - Ensure all API keys are valid before generating
+            - **Access Password Required**: You must enter the correct access password to use this service
+            - **API Keys**: Fivetran and Firecrawl API keys are optional if set in environment variables
+            - **Download**: After generation, download the connector as a ZIP file using the download button
             - The project name will be sanitized (special characters replaced with underscores)
             - All existing connectors will be deleted before generation
             - The connector will be automatically deployed to Fivetran after generation
             - If deployment fails, you can deploy manually using the provided commands
-            - Generated connectors can also be tested locally
             
             ### 📚 Documentation
             - [Fivetran Documentation](https://fivetran.com/docs)
@@ -559,15 +606,16 @@ def create_interface():
         )
         
         async def handle_generation(*args):
-            async for status, path in generate_connector(*args):
-                if path:
-                    yield status, gr.update(value=path, visible=True)
+            async for status, zip_file in generate_connector(*args):
+                if zip_file:
+                    yield status, gr.update(value=zip_file, visible=True)
                 else:
                     yield status, gr.update(visible=False)
         
         generate_btn.click(
             fn=handle_generation,
             inputs=[
+                access_password,
                 destination_name,
                 project_name,
                 url,
@@ -575,7 +623,7 @@ def create_interface():
                 fivetran_api_key_base64,
                 firecrawl_api_key
             ],
-            outputs=[output_status, output_path]
+            outputs=[output_status, download_btn]
         )
     
     return interface

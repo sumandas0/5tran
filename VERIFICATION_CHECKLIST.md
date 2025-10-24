@@ -22,6 +22,7 @@ Use this checklist to verify your containerized 5tran deployment.
 - [ ] `src/` directory exists
 
 ### Environment Variables Set
+- [ ] `ACCESS_PASSWORD` set and valid
 - [ ] `FIVETRAN_API_SECRET_BASE64` set and valid
 - [ ] `FIRECRAWL_API_KEY` set and valid
 - [ ] `GEMINI_API_KEY` set and valid
@@ -49,6 +50,7 @@ docker build -t 5tran:test .
 ```bash
 docker run -p 8080:8080 \
   -e PORT=8080 \
+  -e ACCESS_PASSWORD="your_password" \
   -e FIVETRAN_API_SECRET_BASE64="your_key" \
   -e FIRECRAWL_API_KEY="your_key" \
   -e GEMINI_API_KEY="your_key" \
@@ -102,8 +104,10 @@ gcloud run services describe 5tran \
 ### Test Deployed Application
 - [ ] Visit the service URL
 - [ ] Gradio UI loads without errors
-- [ ] All form fields are present
+- [ ] All form fields are present (including Access Password)
 - [ ] Can fill in test data
+- [ ] Test with wrong password - should show error
+- [ ] Test with correct password - should proceed
 - [ ] Submit button works
 - [ ] Progress indicators display
 - [ ] Results are shown correctly
@@ -116,7 +120,7 @@ gcloud run services describe 5tran --region us-central1
 ```
 - [ ] Service status is "Ready"
 - [ ] Revision is serving traffic
-- [ ] All 3 environment variables are set
+- [ ] All 4 environment variables are set (ACCESS_PASSWORD, FIVETRAN_API_SECRET_BASE64, FIRECRAWL_API_KEY, GEMINI_API_KEY)
 - [ ] Memory allocation is correct (2Gi)
 - [ ] CPU allocation is correct (2 vCPU)
 - [ ] Timeout is set (3600s)

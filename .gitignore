@@ -60,3 +60,6 @@ service-account-key.json
 gradio_cached_examples/
 generated/
 connectors/
+
+# Generated files
+*.zip
