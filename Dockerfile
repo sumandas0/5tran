@@ -27,7 +27,8 @@ RUN useradd -m -u 1000 appuser && \
 # Switch to non-root user
 USER appuser
 
+EXPOSE 8080
 
 # Run the Gradio app with uv
-CMD ["uv", "run", "python", "app.py"]
+CMD ["python", "app.py"]
 
