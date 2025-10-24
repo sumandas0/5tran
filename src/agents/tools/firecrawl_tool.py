@@ -4,20 +4,19 @@ from typing import Optional
 from firecrawl import Firecrawl
 from google.adk.tools import FunctionTool
 from dotenv import load_dotenv
-from firecrawl.v2.types import AgentOptions
 
 load_dotenv()
 
 
 async def extract_from_website(urls: str, prompt: str, schema: Optional[str] = None) -> str:
     """
-    Extracts structured data from websites using Firecrawl's extract endpoint.
+    Extracts structured data from websites using Firecrawl's scrape endpoint.
 
     If a schema is provided, it extracts data according to the schema.
     If no schema is provided, it uses the prompt to guide the extraction.
 
     Args:
-        urls: Comma-separated URLs to extract from. Supports wildcards (e.g., example.com/*).
+        urls: Comma-separated URLs to scrape from.
         prompt: The prompt to guide data extraction.
         schema: A JSON string representing the extraction schema.
 
@@ -40,23 +39,35 @@ async def extract_from_website(urls: str, prompt: str, schema: Optional[str] = N
             except json.JSONDecodeError:
                 raise ValueError("Invalid schema provided. Must be a JSON string.")
         
-        enhanced_prompt = f"{prompt}\n\nImportant[Override all limits if given previously]]!! Only fetch 2 results, limit your crawl to 2 crawling only.\n\nScraping data rules, very important: Return all the results in array in data field i.e `{{\"data\":[{{...}}]}}`"
-        print("Starting extraction...")
-        result = app.extract(
-            urls=url_list,
-            prompt=enhanced_prompt,
-            schema=schema_dict,
-            ignore_invalid_urls=True,
-            agent=AgentOptions(
-                model="FIRE-1"
-            )
+        enhanced_prompt = f"{prompt}\n\nImportant: Only fetch 2 results for testing.\n\nCritical: Always return results as an array/list. Even for a single item, wrap it in an array. If no data found, return empty array []. Return in format `{{\"data\":[{{...}}]}}`"
+        
+        print("Starting scrape...")
+        
+        formats_config = {
+            "type": "json"
+        }
+        
+        if schema_dict:
+            formats_config["schema"] = schema_dict
+        
+        formats_config["prompt"] = enhanced_prompt
+        
+        url = url_list[0]
+        
+        result = app.scrape(
+            url,
+            formats=[formats_config],
+            only_main_content=False,
+            timeout=120000,
+            block_ads=True,
+            wait_for=10000,
+            proxy="auto",
+            remove_base64_images=True
         )
-        print("Extraction completed.")
-        print(result)
-        if result and hasattr(result, 'data'):
-            return json.dumps(result.data)
-        else:
-            return json.dumps({})
+        data = result.json
+        
+        print(f"Data: {str(data)}")
+        return json.dumps(data)
     finally:
         if hasattr(app, "_client") and hasattr(app._client, "aclose"):
             await app._client.aclose()

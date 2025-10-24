@@ -1,0 +1,1 @@
+firecrawl_py==4.5.0

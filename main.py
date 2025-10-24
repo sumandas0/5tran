@@ -19,10 +19,9 @@ def generate_connector_from_template(url: str, prompt: str, firecrawl_schema: di
     with open(template_path, "r") as f:
         template_code = f.read()
     
-    enhanced_prompt = f"{prompt}\\n\\nScraping data rules, very important: Return all the results in array in data field i.e `{{\\\"data\\\":[{{...}}]}}`"
     
     connector_code = template_code.replace("{url_to_extract}", url)
-    connector_code = connector_code.replace("{extraction_prompt}", enhanced_prompt)
+    connector_code = connector_code.replace("{extraction_prompt}", prompt)
     connector_code = connector_code.replace("{firecrawl_schema}", json.dumps(firecrawl_schema, indent=4))
     connector_code = connector_code.replace("{fivetran_schema}", json.dumps(fivetran_schema, indent=4))
     

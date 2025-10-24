@@ -2,11 +2,13 @@
 
 This project uses a multi-agent system built with Google's Agent Development Kit (ADK) to automate the creation of Fivetran connectors.
 
+> **Note**: This project uses Firecrawl's `scrape` API endpoint for faster performance compared to the `extract` endpoint.
+
 ## How it works
 
 1.  **Input**: You provide a project name, website URL, and a prompt describing the data you want to extract.
-2.  **Data Extraction**: The Schema Generator agent uses Firecrawl's `extract` endpoint to extract sample data from the website based on your prompt.
-3.  **Dual Schema Generation**: The agent analyzes the extracted data and creates TWO schemas:
+2.  **Data Extraction**: The Schema Generator agent uses Firecrawl's `scrape` endpoint to extract sample data from the website based on your prompt.
+3.  **Dual Schema Generation**: The agent analyzes the scraped data and creates TWO schemas:
     - **Firecrawl Schema**: A JSON schema for data extraction via the Firecrawl API
     - **Fivetran SDK Schema**: A table definition for the Fivetran connector's `schema()` function
 4.  **Template-Based Generation**: A parameterized connector template is populated with your URL, prompt, and both schemas to create the final connector code.
@@ -17,7 +19,8 @@ This project uses a multi-agent system built with Google's Agent Development Kit
 
 ```
 .
-├── main.py                 # Main entry point
+├── app.py                  # Gradio web interface (recommended)
+├── main.py                 # Command-line interface
 ├── src
 │   ├── agents
 │   │   ├── agents.py              # Schema Generator agent definition
@@ -51,6 +54,42 @@ This project uses a multi-agent system built with Google's Agent Development Kit
     The application will load this key.
 
 ## Usage
+
+### Option 1: Web Interface (Recommended)
+
+Launch the professional Gradio web interface:
+
+```bash
+python app.py
+```
+
+The interface will be available at `http://localhost:7860` and provides:
+
+- **Intuitive UI**: Clean, professional interface with real-time progress indicators
+- **All-in-one Configuration**: Enter all required parameters in one place
+- **Visual Feedback**: Live status updates and generation progress
+- **Automatic Cleanup**: Removes old connectors before generating new ones
+- **Secure Input**: Password-masked fields for API credentials
+
+**Required Inputs:**
+1. Destination Name - Your Fivetran destination identifier
+2. Project Name - Name for your connector (auto-sanitized)
+3. Target URL - Website to extract data from
+4. Extraction Prompt - Description of data to extract
+5. Fivetran API Key - Your Fivetran API credentials
+6. Fivetran API Secret - Your Fivetran API secret
+7. Firecrawl API Key - API key for web scraping
+
+**Features:**
+- 🔄 Real-time progress tracking with status updates
+- 🗑️ Automatic deletion of old connectors before generation
+- 🔒 Secure password-masked input fields for API keys
+- 📊 Live generation logs with emoji indicators
+- ✅ Success confirmation with next steps
+- 📁 Direct path to generated connector folder
+- 🎨 Modern, responsive UI with professional styling
+
+### Option 2: Command Line
 
 Run the connector generator with a project name, URL, and prompt:
 ```bash
@@ -120,23 +159,28 @@ python connector.py
 fivetran deploy .
 ```
 
-### Extract Endpoint Features
+### Scrape Endpoint Features
 
-The Firecrawl `extract` endpoint provides powerful capabilities:
-- **Single Page Extraction**: Extract structured data from a single URL
-- **Multiple Pages**: Provide multiple URLs separated by commas
-- **Wildcard Support**: Use `/*` to automatically crawl and extract from all discoverable URLs in a domain
+The Firecrawl `scrape` endpoint provides powerful capabilities:
+- **Fast Performance**: Significantly faster than the extract endpoint for most use cases
+- **Single Page Scraping**: Extract structured data from a single URL
 - **Schema-based Extraction**: Define a JSON schema for structured data extraction
 - **Prompt-based Extraction**: Use natural language prompts to describe the data you want
+- **Flexible Timeout**: Configurable timeout up to 120 seconds for complex pages
+- **Main Content Focus**: Option to extract only main content or full page
 
-Example with multiple URLs:
+Example scrape call:
 ```python
-urls = ["https://example.com/page1", "https://example.com/page2"]
-```
-
-Example with wildcard for full domain:
-```python
-urls = ["https://example.com/*"]
+result = app.scrape(
+    'https://example.com',
+    formats=[{
+        "type": "json",
+        "schema": schema_dict,
+        "prompt": "Extract product information"
+    }],
+    only_main_content=False,
+    timeout=120000
+)
 ```
 
 ## Dual Schema Architecture

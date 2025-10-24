@@ -1,4 +1,4 @@
-# newsscraper Connector
+# newsai Connector
 
 This Fivetran connector extracts data from: https://news.google.com
 
@@ -25,7 +25,7 @@ python connector.py
 ## Deploying to Fivetran
 
 ```bash
-fivetran deploy src/connectors/newsscraper
+fivetran deploy src/connectors/newsai
 ```
 
 Make sure you have the Fivetran CLI installed and configured.

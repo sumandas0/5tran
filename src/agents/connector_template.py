@@ -2,14 +2,13 @@ import traceback
 import json
 import os
 from firecrawl import Firecrawl
-from firecrawl.v2.types import AgentOptions
 from fivetran_connector_sdk import Connector
 from fivetran_connector_sdk import Logging as log
 from fivetran_connector_sdk import Operations as op
 
 # Configuration parameters (template placeholders - will be replaced during generation)
 URL_TO_EXTRACT = "{url_to_extract}"  # noqa: F821
-EXTRACTION_PROMPT = "{extraction_prompt}"  # noqa: F821
+EXTRACTION_PROMPT = f"{extraction_prompt}"  # noqa: F821
 
 # These placeholders are replaced with actual schemas during generation
 FIRECRAWL_EXTRACT_SCHEMA = {firecrawl_schema}  # noqa: F821
@@ -48,35 +47,47 @@ def update(configuration: dict, state: dict):
             log.severe(f"Failed to initialize Firecrawl client: {str(init_error)}")
             raise
         
-        # Step 4: Extract data using Firecrawl
-        log.warning(f"Calling Firecrawl extract API with prompt: {EXTRACTION_PROMPT[:100]}...")
+        # Step 4: Scrape data using Firecrawl
+        log.warning(f"Calling Firecrawl scrape API with prompt: {EXTRACTION_PROMPT[:100]}...")
         try:
-            result = app.extract(
-                urls=[url],
-                prompt=EXTRACTION_PROMPT,
-                schema=FIRECRAWL_EXTRACT_SCHEMA,
-                ignore_invalid_urls=True,
-                agent=AgentOptions(
-                    model="FIRE-1"
-                )
+            updated_schema = {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "array",
+                        "items": FIRECRAWL_EXTRACT_SCHEMA
+                    }
+                },
+                "required": ["data"]
+            }
+            formats_config = {
+                "type": "json",
+                "schema": updated_schema,
+                "prompt": EXTRACTION_PROMPT
+            }
+            
+            result = app.scrape(
+                url,
+                formats=[formats_config],
+                only_main_content=False,
+                timeout=120000,
+                block_ads=True,
+                wait_for=10000,
+                proxy="auto",
+                remove_base64_images=True
             )
-            log.warning("Firecrawl extract API call completed")
-        except Exception as extract_error:
-            log.severe(f"Firecrawl extraction failed: {str(extract_error)}")
+            log.warning("Firecrawl scrape API call completed")
+        except Exception as scrape_error:
+            log.severe(f"Firecrawl scraping failed: {str(scrape_error)}")
             raise
 
-        # Step 5: Process and validate extracted data
-        if result and hasattr(result, 'data'):
-            data = result.data
-            
-            if not data:
-                log.warning("Firecrawl returned empty data")
-                op.checkpoint(state)
-                return
-            
+        # Step 5: Process and validate scraped data
+        data = result.json['data']
+        
+        if data:
             # Log data details
             data_str = json.dumps(data)
-            log.warning(f"Successfully extracted data: {len(data_str)} characters")
+            log.warning(f"Successfully scraped data: {len(data)} records, {len(data_str)} characters")
             log.warning(f"Data preview: {data_str[:200]}...")
             
             # Step 6: Get table name and validate
@@ -85,15 +96,16 @@ def update(configuration: dict, state: dict):
             
             # Step 7: Upsert data
             try:
-                op.upsert(table=table_name, data=data)
-                log.warning(f"Successfully upserted data into table '{table_name}'")
+                for record in data:
+                    op.upsert(table=table_name, data=record)
+                log.warning(f"Successfully upserted {len(data)} records into table '{table_name}'")
             except Exception as upsert_error:
                 log.severe(f"Failed to upsert data: {str(upsert_error)}")
                 raise
         else:
-            log.warning("No data extracted from source - result is empty or malformed")
+            log.warning("No data scraped from source - result is empty")
             if result:
-                log.warning(f"Result object: {str(result)[:200]}")
+                log.warning(f"Result object: {str(result.json)}")
 
         # Step 8: Checkpoint state
         log.warning("Saving checkpoint state")
