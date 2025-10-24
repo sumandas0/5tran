@@ -27,8 +27,6 @@ RUN useradd -m -u 1000 appuser && \
 # Switch to non-root user
 USER appuser
 
-# Expose port (Cloud Run will set PORT env var)
-ENV PORT=8080
 
 # Run the Gradio app with uv
 CMD ["uv", "run", "python", "app.py"]

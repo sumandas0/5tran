@@ -632,7 +632,7 @@ def create_interface():
 if __name__ == "__main__":
     interface = create_interface()
     interface.queue()
-    port = int(os.getenv("PORT", 7860))
+    port = int(os.getenv("PORT", 8080))
     interface.launch(
         server_name="0.0.0.0",
         server_port=port,
