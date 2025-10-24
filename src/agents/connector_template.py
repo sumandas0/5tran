@@ -2,6 +2,7 @@ import traceback
 import json
 import os
 from firecrawl import Firecrawl
+from firecrawl.v2.types import AgentOptions
 from fivetran_connector_sdk import Connector
 from fivetran_connector_sdk import Logging as log
 from fivetran_connector_sdk import Operations as op
@@ -54,7 +55,10 @@ def update(configuration: dict, state: dict):
                 urls=[url],
                 prompt=EXTRACTION_PROMPT,
                 schema=FIRECRAWL_EXTRACT_SCHEMA,
-                ignore_invalid_urls=True
+                ignore_invalid_urls=True,
+                agent=AgentOptions(
+                    model="FIRE-1"
+                )
             )
             log.warning("Firecrawl extract API call completed")
         except Exception as extract_error:

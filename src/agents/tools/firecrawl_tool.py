@@ -39,23 +39,24 @@ async def extract_from_website(urls: str, prompt: str, schema: Optional[str] = N
                 schema_dict = json.loads(schema)
             except json.JSONDecodeError:
                 raise ValueError("Invalid schema provided. Must be a JSON string.")
+        
+        enhanced_prompt = f"{prompt}\n\nImportant[Override all limits if given previously]]!! Only fetch 2 results, limit your crawl to 2 crawling only.\n\nScraping data rules, very important: Return all the results in array in data field i.e `{{\"data\":[{{...}}]}}`"
         print("Starting extraction...")
-        # result = app.extract(
-        #     urls=url_list,
-        #     prompt=prompt,
-        #     schema=schema_dict,
-        #     ignore_invalid_urls=True,
-        #     agent=AgentOptions(
-        #         model="FIRE-1"
-        #     )
-        # )
-        # print("Extraction completed.")
-        # print(result)
-        # if result and hasattr(result, 'data'):
-        #     return json.dumps(result.data)
-        # else:
-        #     return json.dumps({})
-        return json.dumps({'data': [{'url': 'https://news.google.com/read/CBMimgFBVV95cUxQUzhMaDFPcWVPUFFPZUxLblpNWDZyeHhkbV9HTDJadUxaUi0zQl9jY2x3dmxLVG9ueU45WDd1bkUycG5NVE1jY0t2U3lUeVRLSXdQYTY4ZzA3dG5IX1ZkQ0szUko0WVhVUzRaelB4SmVocGNWaHBhdUNJU05qdkRUTnh4blF6YjBRbVZmbGNOQm9LaTZoN2JHSS1B?hl=en-US&gl=US&ceid=US%3Aen', 'title': 'Trump says he’s canceling trade negotiations with Canada over anti-tariff ad', 'summary': 'Trump has announced the cancellation of trade negotiations with Canada, citing an anti-tariff advertisement as the reason for his decision.', 'publicationDate': '2025-10-24T12:08:14.778Z'}]})
+        result = app.extract(
+            urls=url_list,
+            prompt=enhanced_prompt,
+            schema=schema_dict,
+            ignore_invalid_urls=True,
+            agent=AgentOptions(
+                model="FIRE-1"
+            )
+        )
+        print("Extraction completed.")
+        print(result)
+        if result and hasattr(result, 'data'):
+            return json.dumps(result.data)
+        else:
+            return json.dumps({})
     finally:
         if hasattr(app, "_client") and hasattr(app._client, "aclose"):
             await app._client.aclose()
