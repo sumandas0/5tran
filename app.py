@@ -163,7 +163,6 @@ def create_zip_from_directory(source_dir: str, output_filename: str) -> str:
 
 
 async def generate_connector(
-    access_password: str,
     destination_name: str,
     project_name: str,
     url: str,
@@ -174,17 +173,8 @@ async def generate_connector(
 ):
     """Main function to generate connector with progress tracking."""
     try:
-        if not all([access_password, destination_name, project_name, url, prompt]):
-            yield "❌ Error: Access password, destination name, project name, URL, and prompt are required!", None
-            return
-        
-        correct_password = os.getenv("ACCESS_PASSWORD")
-        if not correct_password:
-            yield "❌ Error: ACCESS_PASSWORD environment variable is not set on the server. Please contact the administrator.", None
-            return
-        
-        if access_password != correct_password:
-            yield "❌ Error: Invalid access password. Please enter the correct password to continue.", None
+        if not all([destination_name, project_name, url, prompt]):
+            yield "❌ Error: Destination name, project name, URL, and prompt are required!", None
             return
         
         if not fivetran_api_key_base64:
@@ -542,14 +532,7 @@ def create_interface():
                     info="Describe what data you want to scrape from the website"
                 )
                 
-                gr.Markdown("## 🔑 Authentication & API Credentials")
-                
-                access_password = gr.Textbox(
-                    label="Access Password",
-                    type="password",
-                    placeholder="Enter the access password",
-                    info="Required to prevent API misuse - provided by administrator"
-                )
+                gr.Markdown("## 🔑 API Credentials")
                 
                 fivetran_api_key_base64 = gr.Textbox(
                     label="Fivetran API Key (Base64 Encoded)",
@@ -590,7 +573,6 @@ def create_interface():
             ---
             
             ### 💡 Tips
-            - **Access Password Required**: You must enter the correct access password to use this service
             - **API Keys**: Fivetran and Firecrawl API keys are optional if set in environment variables
             - **Download**: After generation, download the connector as a ZIP file using the download button
             - The project name will be sanitized (special characters replaced with underscores)
@@ -615,7 +597,6 @@ def create_interface():
         generate_btn.click(
             fn=handle_generation,
             inputs=[
-                access_password,
                 destination_name,
                 project_name,
                 url,
