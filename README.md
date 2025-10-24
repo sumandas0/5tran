@@ -13,7 +13,8 @@ This project uses a multi-agent system built with Google's Agent Development Kit
     - **Fivetran SDK Schema**: A table definition for the Fivetran connector's `schema()` function
 4.  **Template-Based Generation**: A parameterized connector template is populated with your URL, prompt, and both schemas to create the final connector code.
 5.  **Project Creation**: A complete project folder is created with connector.py, configuration.json, and README.md.
-6.  **Output**: A production-ready Fivetran connector ready for testing and deployment.
+6.  **Automatic Deployment**: The connector is automatically deployed to Fivetran using the Fivetran CLI.
+7.  **Output**: A production-ready Fivetran connector deployed and ready to sync data.
 
 ## Project Structure
 
@@ -41,17 +42,46 @@ This project uses a multi-agent system built with Google's Agent Development Kit
 
 ## Setup
 
+### Local Development
+
 1.  **Install dependencies**:
     ```bash
     uv pip install .
     ```
 
-2.  **Set up your environment variables**:
+2.  **Install Fivetran CLI** (required for automatic deployment):
+    ```bash
+    pip install fivetran-cli
+    ```
+    Or follow the [official Fivetran CLI installation guide](https://github.com/fivetran/fivetran-cli).
+
+3.  **Set up your environment variables**:
     Create a `.env` file in the root of the project and add your Firecrawl API key:
     ```
     FIRECRAWL_API_KEY="fc-YOUR-API-KEY"
+    FIVETRAN_API_SECRET_BASE64="your-base64-key"
+    GEMINI_API_KEY="your-gemini-key"
     ```
-    The application will load this key.
+    The application will load these keys.
+
+### Cloud Deployment (Google Cloud Run)
+
+The application is containerized and ready for deployment to Google Cloud Run. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+**Quick Deploy:**
+```bash
+export PROJECT_ID="your-gcp-project-id"
+export FIVETRAN_API_SECRET_BASE64="your_base64_key"
+export FIRECRAWL_API_KEY="your_firecrawl_key"
+export GEMINI_API_KEY="your_gemini_key"
+
+./deploy.sh
+```
+
+**Required Environment Variables:**
+- `FIVETRAN_API_SECRET_BASE64` - Base64-encoded Fivetran API credentials
+- `FIRECRAWL_API_KEY` - Firecrawl API key for web scraping
+- `GEMINI_API_KEY` - Google Gemini API key for AI generation
 
 ## Usage
 
@@ -69,6 +99,7 @@ The interface will be available at `http://localhost:7860` and provides:
 - **All-in-one Configuration**: Enter all required parameters in one place
 - **Visual Feedback**: Live status updates and generation progress
 - **Automatic Cleanup**: Removes old connectors before generating new ones
+- **Automatic Deployment**: Deploys connectors directly to Fivetran
 - **Secure Input**: Password-masked fields for API credentials
 
 **Required Inputs:**
@@ -83,11 +114,13 @@ The interface will be available at `http://localhost:7860` and provides:
 **Features:**
 - 🔄 Real-time progress tracking with status updates
 - 🗑️ Automatic deletion of old connectors before generation
+- 🚀 Automatic deployment to Fivetran with CLI integration
 - 🔒 Secure password-masked input fields for API keys
 - 📊 Live generation logs with emoji indicators
-- ✅ Success confirmation with next steps
+- ✅ Success confirmation with deployment status
 - 📁 Direct path to generated connector folder
 - 🎨 Modern, responsive UI with professional styling
+- ⚠️ Fallback instructions if deployment fails
 
 ### Option 2: Command Line
 
@@ -143,6 +176,12 @@ src/connectors/google_news/
 
 ### Testing and Deployment
 
+**Web Interface (Automatic):**
+When using the web interface (`app.py`), connectors are automatically deployed to Fivetran after generation. No manual deployment needed!
+
+**Command Line (Manual Deployment):**
+If using the CLI (`main.py`) or need to manually redeploy:
+
 **Install Dependencies:**
 ```bash
 cd src/connectors/google_news
@@ -156,7 +195,9 @@ python connector.py
 
 **Deploy to Fivetran:**
 ```bash
-fivetran deploy .
+export FIVETRAN_API_KEY="your_api_key"
+export FIVETRAN_API_SECRET="your_api_secret"
+fivetran deploy . --destination "your_destination_name"
 ```
 
 ### Scrape Endpoint Features
@@ -236,6 +277,8 @@ The system uses a simple, efficient template-based approach:
 │    - Project name                               │
 │    - URL to extract from                        │
 │    - Extraction prompt                          │
+│    - Fivetran API credentials                   │
+│    - Destination name                           │
 └────────────────┬────────────────────────────────┘
                  │
 ┌────────────────▼────────────────────────────────┐
@@ -261,6 +304,13 @@ The system uses a simple, efficient template-based approach:
 │    - Saves connector.py                         │
 │    - Generates configuration.json               │
 │    - Creates README.md                          │
+└────────────────┬────────────────────────────────┘
+                 │
+┌────────────────▼────────────────────────────────┐
+│ 5. Automatic Deployment (Web Interface)         │
+│    - Calls Fivetran CLI                         │
+│    - Deploys to specified destination           │
+│    - Reports deployment status                  │
 └─────────────────────────────────────────────────┘
 ```
 

@@ -1,6 +1,6 @@
-# newsai Connector
+# asianews01 Connector
 
-This Fivetran connector extracts data from: https://news.google.com
+This Fivetran connector extracts data from: https://www.bbc.com/news/world/asia
 
 ## Files
 
@@ -25,7 +25,7 @@ python connector.py
 ## Deploying to Fivetran
 
 ```bash
-fivetran deploy src/connectors/newsai
+fivetran deploy src/connectors/asianews01
 ```
 
 Make sure you have the Fivetran CLI installed and configured.

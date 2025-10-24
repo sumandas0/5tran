@@ -40,14 +40,33 @@ Here is your workflow:
 - Must be a list containing table definitions with:
   - `table`: The table name (string)
   - `primary_key`: List of column names that form the primary key
-  - `columns`: Dictionary mapping column names to Fivetran types (STRING, INTEGER, FLOAT, BOOLEAN, UTC_DATETIME, etc.)
+  - `columns`: Dictionary mapping column names to Fivetran types
+
+### SUPPORTED FIVETRAN DATA TYPES (USE ONLY THESE):
+- BOOLEAN
+- SHORT
+- INT
+- LONG
+- DECIMAL
+- FLOAT
+- DOUBLE
+- NAIVE_DATE
+- NAIVE_DATETIME
+- UTC_DATETIME
+- BINARY
+- XML
+- STRING
+- JSON
 
 ### Type Mapping Rules:
 - JSON "string" -> Fivetran "STRING"
-- JSON "number" -> Fivetran "FLOAT"
-- JSON "integer" -> Fivetran "INTEGER"
+- JSON "number" -> Fivetran "DOUBLE" (or "FLOAT" for lower precision)
+- JSON "integer" -> Fivetran "LONG" (or "INT" for smaller values)
 - JSON "boolean" -> Fivetran "BOOLEAN"
-- JSON "string" with date/time -> Fivetran "UTC_DATETIME"
+- JSON "string" with date -> Fivetran "NAIVE_DATE"
+- JSON "string" with datetime -> Fivetran "NAIVE_DATETIME" or "UTC_DATETIME"
+- JSON "object" -> Fivetran "JSON"
+- JSON "array" -> Fivetran "JSON"
 
 ### Example Output Format:
 
@@ -93,12 +112,14 @@ For a news website, your output should be:
       "url": "STRING",
       "title": "STRING",
       "author": "STRING",
-      "published_date": "STRING",
+      "published_date": "UTC_DATETIME",
       "content": "STRING"
     }
   }
 ]
 ```
+
+IMPORTANT: Only use the supported Fivetran data types listed above. Do not use any other type names like "INTEGER", "NUMBER", etc.
 
 4.  Your final output MUST include both schemas clearly labeled as "Firecrawl Schema:" and "Fivetran SDK Schema:" with each schema in a JSON code block.
 """

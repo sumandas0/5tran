@@ -1,0 +1,53 @@
+# Ignore Python cache and environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+ENV/
+env/
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore environment files
+.env
+.env.local
+
+# Ignore Git
+.git/
+.gitignore
+.gitattributes
+
+# Ignore documentation (except README)
+*.md
+!README.md
+!DEPLOYMENT.md
+
+# Ignore test files
+tests/
+test_*.py
+*_test.py
+
+# Ignore macOS files
+.DS_Store
+
+# Ignore generated connectors
+src/connectors/*
+
+# Ignore logs and temp files
+*.log
+*.tmp
+tmp/
+temp/
+

@@ -2,6 +2,8 @@ import asyncio
 import os
 import json
 import shutil
+import subprocess
+import base64
 from pathlib import Path
 import gradio as gr
 from dotenv import load_dotenv
@@ -19,10 +21,9 @@ def generate_connector_from_template(url: str, prompt: str, firecrawl_schema: di
     with open(template_path, "r") as f:
         template_code = f.read()
     
-    enhanced_prompt = f"{prompt} Critical: Always return results as an array/list. Even for a single item, wrap it in an array. If no data found, return empty array []."
-    
+
     connector_code = template_code.replace("{url_to_extract}", url)
-    connector_code = connector_code.replace("{extraction_prompt}", enhanced_prompt)
+    connector_code = connector_code.replace("{extraction_prompt}", prompt)
     connector_code = connector_code.replace("{firecrawl_schema}", json.dumps(firecrawl_schema, indent=4))
     connector_code = connector_code.replace("{fivetran_schema}", json.dumps(fivetran_schema, indent=4))
     
@@ -100,6 +101,44 @@ Make sure you have the Fivetran CLI installed and configured.
     return project_dir
 
 
+def deploy_to_fivetran(project_dir: str, api_key_base64: str, destination_name: str, project_name: str) -> tuple[bool, str]:
+    """Deploy connector to Fivetran using CLI."""
+    try:
+        cmd = [
+            'fivetran',
+            'deploy',
+            project_dir,
+            '--api-key',
+            api_key_base64,
+            '--destination',
+            destination_name,
+            '--connection',
+            project_name,
+            '--configuration',
+            'configuration.json',
+            '--force'
+        ]
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+        
+        if result.returncode == 0:
+            return True, result.stdout
+        else:
+            return False, f"Deployment failed:\n{result.stderr}\n{result.stdout}"
+    
+    except subprocess.TimeoutExpired:
+        return False, "Deployment timed out after 5 minutes"
+    except FileNotFoundError:
+        return False, "Fivetran CLI not found. Please install it using: pip install fivetran-cli"
+    except Exception as e:
+        return False, f"Deployment error: {str(e)}"
+
+
 def delete_all_connectors():
     """Delete all existing connector folders."""
     connectors_dir = Path("src/connectors")
@@ -115,14 +154,13 @@ async def generate_connector(
     project_name: str,
     url: str,
     prompt: str,
-    fivetran_api_key: str,
-    fivetran_api_secret: str,
+    fivetran_api_key_base64: str,
     firecrawl_api_key: str,
     progress=gr.Progress()
 ):
     """Main function to generate connector with progress tracking."""
     try:
-        if not all([destination_name, project_name, url, prompt, fivetran_api_key, fivetran_api_secret, firecrawl_api_key]):
+        if not all([destination_name, project_name, url, prompt, fivetran_api_key_base64, firecrawl_api_key]):
             yield "❌ Error: All fields are required!", None
             return
         
@@ -235,16 +273,38 @@ async def generate_connector(
         
         project_dir = create_connector_project(connector_code, url, project_name, firecrawl_api_key)
         
+        yield f"✅ **Project created at:** `{project_dir}`\n\n", None
+        
+        progress(0.95, desc="🚀 Deploying to Fivetran...")
+        yield "🚀 **Deploying connector to Fivetran...**\n", None
+        yield f"📍 Destination: `{destination_name}`\n\n", None
+        
+        success, deploy_message = deploy_to_fivetran(
+            project_dir=project_dir,
+            api_key_base64=fivetran_api_key_base64,
+            destination_name=destination_name,
+            project_name=project_name
+        )
+        
         progress(1.0, desc="✅ Complete!")
         
-        result = f"""
-# ✅ Connector Generated Successfully!
+        if success:
+            gr.Info(
+                f"🎉 Deployment Successful!\n\n"
+                f"Your connector '{project_name}' has been successfully deployed to Fivetran destination '{destination_name}'.\n\n"
+                f"The connector is now live and ready to sync data!",
+                duration=10
+            )
+            
+            result = f"""
+# ✅ Connector Generated & Deployed Successfully!
 
 ## 📊 Project Details
 - **Destination:** `{destination_name}`
 - **Project Name:** `{project_name}`
 - **Location:** `{project_dir}`
 - **Target URL:** `{url}`
+- **Status:** ✅ Deployed to Fivetran
 
 ## 📁 Generated Files
 - ✅ `connector.py` - Main connector implementation
@@ -252,7 +312,7 @@ async def generate_connector(
 - ✅ `requirements.txt` - Python dependencies
 - ✅ `README.md` - Documentation
 
-## 🚀 Next Steps
+## 🔧 Local Testing (Optional)
 
 ### 1. Install Dependencies
 ```bash
@@ -264,19 +324,71 @@ cd {project_dir} && pip install -r requirements.txt
 python {project_dir}/connector.py
 ```
 
-### 3. Deploy to Fivetran
-```bash
-fivetran deploy {project_dir}
-```
-
 ## 🔑 Configuration Summary
-- **Fivetran API Key:** `{fivetran_api_key[:8]}...`
-- **Fivetran API Secret:** `{fivetran_api_secret[:8]}...`
+- **Fivetran API Key (Base64):** `{fivetran_api_key_base64[:12]}...`
 - **Firecrawl API Key:** `{firecrawl_api_key[:8]}...`
 
 ---
 
-**Ready to sync your data! 🎉**
+**Your connector is now live and syncing data! 🎉**
+"""
+        else:
+            gr.Warning(
+                f"⚠️ Deployment Failed\n\n"
+                f"Connector generated successfully but deployment to Fivetran failed.\n\n"
+                f"Error: {deploy_message[:200]}...\n\n"
+                f"Please check the details below for manual deployment instructions.",
+                duration=15
+            )
+            
+            result = f"""
+# ⚠️ Connector Generated But Deployment Failed
+
+## 📊 Project Details
+- **Destination:** `{destination_name}`
+- **Project Name:** `{project_name}`
+- **Location:** `{project_dir}`
+- **Target URL:** `{url}`
+- **Status:** ⚠️ Deployment failed
+
+## 📁 Generated Files
+- ✅ `connector.py` - Main connector implementation
+- ✅ `configuration.json` - API keys and configuration
+- ✅ `requirements.txt` - Python dependencies
+- ✅ `README.md` - Documentation
+
+## ❌ Deployment Error Details
+
+```
+{deploy_message}
+```
+
+## 🔧 Manual Deployment Steps
+
+You can deploy manually using these steps:
+
+### 1. Install Dependencies
+```bash
+cd {project_dir} && pip install -r requirements.txt
+```
+
+### 2. Test Locally
+```bash
+python {project_dir}/connector.py
+```
+
+### 3. Deploy Manually
+```bash
+fivetran deploy {project_dir} --api-key {fivetran_api_key_base64} --destination {destination_name} --connection {project_name} --configuration configuration.json --force
+```
+
+## 🔑 Configuration Summary
+- **Fivetran API Key (Base64):** `{fivetran_api_key_base64[:12]}...`
+- **Firecrawl API Key:** `{firecrawl_api_key[:8]}...`
+
+---
+
+**Please resolve the deployment issue and try again.**
 """
         
         yield result, project_dir
@@ -306,10 +418,37 @@ def create_interface():
         margin: auto;
     }
     .output-markdown {
-        background-color: #f8f9fa;
+        background-color: #1a1a1a !important;
+        color: #e0e0e0 !important;
         padding: 20px;
         border-radius: 8px;
         border-left: 4px solid #4CAF50;
+        min-height: 400px;
+    }
+    .output-markdown * {
+        color: #e0e0e0 !important;
+    }
+    .output-markdown h1 {
+        color: #4CAF50 !important;
+    }
+    .output-markdown h2 {
+        color: #66BB6A !important;
+    }
+    .output-markdown code {
+        background-color: #2d2d2d !important;
+        color: #81C784 !important;
+        padding: 2px 6px;
+        border-radius: 3px;
+    }
+    .output-markdown pre {
+        background-color: #2d2d2d !important;
+        border: 1px solid #3d3d3d;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    .output-markdown strong {
+        color: #ffffff !important;
+        font-weight: 600;
     }
     .input-group {
         background-color: #ffffff;
@@ -329,9 +468,9 @@ def create_interface():
             """
             # 🚀 5tran - Fivetran Connector Generator
             
-            **Automatically generate Fivetran connectors from any website**
+            **Automatically generate and deploy Fivetran connectors from any website**
             
-            Fill in the details below to generate a custom connector that extracts data from your target website.
+            Fill in the details below to generate a custom connector that extracts data from your target website and automatically deploy it to Fivetran.
             """
         )
         
@@ -366,16 +505,11 @@ def create_interface():
                 
                 gr.Markdown("## 🔑 API Credentials")
                 
-                fivetran_api_key = gr.Textbox(
-                    label="Fivetran API Key",
+                fivetran_api_key_base64 = gr.Textbox(
+                    label="Fivetran API Key (Base64 Encoded)",
                     type="password",
-                    placeholder="Enter your Fivetran API Key"
-                )
-                
-                fivetran_api_secret = gr.Textbox(
-                    label="Fivetran API Secret",
-                    type="password",
-                    placeholder="Enter your Fivetran API Secret"
+                    placeholder="Enter your Base64-encoded Fivetran API key",
+                    info="Fivetran provides this as a base64-encoded key:secret string"
                 )
                 
                 firecrawl_api_key = gr.Textbox(
@@ -386,7 +520,7 @@ def create_interface():
                 )
                 
                 generate_btn = gr.Button(
-                    "🚀 Generate Connector",
+                    "🚀 Generate & Deploy Connector",
                     variant="primary",
                     size="lg"
                 )
@@ -395,7 +529,7 @@ def create_interface():
                 gr.Markdown("## 📊 Generation Progress")
                 
                 output_status = gr.Markdown(
-                    value="**Ready to generate connector...**\n\nFill in all fields and click 'Generate Connector' to begin.",
+                    value="**Ready to generate and deploy connector...**\n\nFill in all fields and click 'Generate & Deploy Connector' to begin.",
                     elem_classes=["output-markdown"]
                 )
                 
@@ -413,11 +547,14 @@ def create_interface():
             - Ensure all API keys are valid before generating
             - The project name will be sanitized (special characters replaced with underscores)
             - All existing connectors will be deleted before generation
-            - Generated connectors can be tested locally before deploying to Fivetran
+            - The connector will be automatically deployed to Fivetran after generation
+            - If deployment fails, you can deploy manually using the provided commands
+            - Generated connectors can also be tested locally
             
             ### 📚 Documentation
             - [Fivetran Documentation](https://fivetran.com/docs)
             - [Firecrawl Documentation](https://firecrawl.dev/docs)
+            - [Fivetran CLI](https://github.com/fivetran/fivetran-cli)
             """
         )
         
@@ -435,8 +572,7 @@ def create_interface():
                 project_name,
                 url,
                 prompt,
-                fivetran_api_key,
-                fivetran_api_secret,
+                fivetran_api_key_base64,
                 firecrawl_api_key
             ],
             outputs=[output_status, output_path]
@@ -448,9 +584,10 @@ def create_interface():
 if __name__ == "__main__":
     interface = create_interface()
     interface.queue()
+    port = int(os.getenv("PORT", 7860))
     interface.launch(
         server_name="0.0.0.0",
-        server_port=7860,
+        server_port=port,
         share=False,
         show_error=True
     )
